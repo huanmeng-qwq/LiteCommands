@@ -1,7 +1,9 @@
 package dev.rollczi.litecommands.requirement;
 
+import dev.rollczi.litecommands.argument.parser.ParserDependResult;
 import dev.rollczi.litecommands.meta.Meta;
 import dev.rollczi.litecommands.scheduler.SchedulerPoll;
+
 import java.util.concurrent.CompletableFuture;
 import java.util.function.Supplier;
 
@@ -27,5 +29,7 @@ class ScheduledRequirement<T> {
         return requirement.meta().get(Meta.POLL_TYPE);
     }
 
-
+    public ParserDependResult depends() {
+        return this.requirement.meta().get(Meta.PARSER_DEPEND_RESULT_KEY);
+    }
 }

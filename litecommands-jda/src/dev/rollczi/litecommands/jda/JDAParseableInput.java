@@ -2,6 +2,7 @@ package dev.rollczi.litecommands.jda;
 
 import dev.rollczi.litecommands.argument.Argument;
 import dev.rollczi.litecommands.argument.parser.ParseResult;
+import dev.rollczi.litecommands.argument.parser.ParseResultAccessor;
 import dev.rollczi.litecommands.argument.parser.input.ParseableInputMatcher;
 import dev.rollczi.litecommands.input.raw.RawInput;
 import dev.rollczi.litecommands.argument.parser.Parser;
@@ -43,7 +44,7 @@ class JDAParseableInput extends AbstractJDAInput<JDAParseableInput.JDAInputMatch
 
         @Override
         @SuppressWarnings("unchecked")
-        public <SENDER, T> ParseResult<T> nextArgument(Invocation<SENDER> invocation, Argument<T> argument, Supplier<Parser<SENDER, T>> parserProvider) {
+        public <SENDER, T> ParseResult<T> nextArgument(Invocation<SENDER> invocation, Argument<T> argument, Supplier<Parser<SENDER, T>> parserProvider, ParseResultAccessor accessor) {
             OptionMapping optionMapping = arguments.get(argument.getName());
 
             if (optionMapping == null) {

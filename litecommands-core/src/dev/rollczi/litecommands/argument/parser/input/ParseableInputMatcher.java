@@ -2,6 +2,7 @@ package dev.rollczi.litecommands.argument.parser.input;
 
 import dev.rollczi.litecommands.argument.Argument;
 import dev.rollczi.litecommands.argument.parser.ParseResult;
+import dev.rollczi.litecommands.argument.parser.ParseResultAccessor;
 import dev.rollczi.litecommands.argument.parser.Parser;
 import dev.rollczi.litecommands.input.InputMatcher;
 import dev.rollczi.litecommands.invocation.Invocation;
@@ -10,7 +11,7 @@ import java.util.function.Supplier;
 
 public interface ParseableInputMatcher<SELF extends ParseableInputMatcher<SELF>> extends InputMatcher {
 
-    <SENDER, PARSED> ParseResult<PARSED> nextArgument(Invocation<SENDER> invocation, Argument<PARSED> argument, Supplier<Parser<SENDER, PARSED>> parser);
+    <SENDER, PARSED> ParseResult<PARSED> nextArgument(Invocation<SENDER> invocation, Argument<PARSED> argument, Supplier<Parser<SENDER, PARSED>> parser, ParseResultAccessor accessor);
 
     @Override
     boolean hasNextRoute();

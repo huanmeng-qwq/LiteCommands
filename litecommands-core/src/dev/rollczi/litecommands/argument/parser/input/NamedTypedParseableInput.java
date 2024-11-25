@@ -2,6 +2,7 @@ package dev.rollczi.litecommands.argument.parser.input;
 
 import dev.rollczi.litecommands.argument.Argument;
 import dev.rollczi.litecommands.argument.parser.ParseResult;
+import dev.rollczi.litecommands.argument.parser.ParseResultAccessor;
 import dev.rollczi.litecommands.argument.parser.Parser;
 import dev.rollczi.litecommands.input.raw.RawCommand;
 import dev.rollczi.litecommands.input.raw.RawInput;
@@ -63,8 +64,8 @@ class NamedTypedParseableInput implements ParseableInput<NamedTypedParseableInpu
         public <SENDER, T> ParseResult<T> nextArgument(
             Invocation<SENDER> invocation,
             Argument<T> argument,
-            Supplier<Parser<SENDER, T>> parserProvider
-        ) {
+            Supplier<Parser<SENDER, T>> parserProvider,
+            ParseResultAccessor accessor) {
             Object input = namedArguments.get(argument.getName());
 
             if (input == null) {

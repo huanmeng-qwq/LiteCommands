@@ -4,14 +4,15 @@ import dev.rollczi.litecommands.argument.Argument;
 import dev.rollczi.litecommands.argument.ArgumentKey;
 import dev.rollczi.litecommands.input.raw.RawInput;
 import dev.rollczi.litecommands.invocation.Invocation;
-import dev.rollczi.litecommands.reflect.type.TypeRange;
+import dev.rollczi.litecommands.meta.Meta;
 import dev.rollczi.litecommands.reflect.type.TypeIndex;
+import dev.rollczi.litecommands.reflect.type.TypeRange;
+import org.jetbrains.annotations.NotNull;
+
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-
-import org.jetbrains.annotations.NotNull;
 
 public class ParserRegistryImpl<SENDER> implements ParserRegistry<SENDER>, ParserChainAccessor<SENDER> {
 
@@ -23,6 +24,9 @@ public class ParserRegistryImpl<SENDER> implements ParserRegistry<SENDER>, Parse
     public <T> void registerParser(TypeRange<T> typeRange, ArgumentKey key, Parser<SENDER, T> parser) {
         List<ParserNamespacedIndex<SENDER, ?>> indexList = typeIndex.computeIfAbsent(typeRange, () -> new ParserNamespacedIndex<>());
 
+        if (parser instanceof DependencyParser) {
+            parser = new DependencyParserRedirect<>(parser);
+        }
         for (ParserNamespacedIndex<SENDER, ?> index : indexList) {
             ParserNamespacedIndex<SENDER, T> typedIndex = (ParserNamespacedIndex<SENDER, T>) index;
             typedIndex.registerParser(key, parser);
@@ -69,6 +73,9 @@ public class ParserRegistryImpl<SENDER> implements ParserRegistry<SENDER>, Parse
             ParserSet<SENDER, T> parserSet = getParserSet(argumentType, argument.getKey());
             senderParser = parserSet.getValidParserOrThrow(argument);
             cachedParsers.put(argument, senderParser);
+        }
+        if (senderParser instanceof DependencyParser) {
+            argument.meta().put(Meta.PARSER_DEPEND_RESULT_KEY, ((DependencyParser) senderParser).depends());
         }
 
         return senderParser;

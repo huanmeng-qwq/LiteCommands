@@ -2,6 +2,7 @@ package dev.rollczi.litecommands.argument.parser.input;
 
 import dev.rollczi.litecommands.argument.Argument;
 import dev.rollczi.litecommands.argument.parser.ParseResult;
+import dev.rollczi.litecommands.argument.parser.ParseResultAccessor;
 import dev.rollczi.litecommands.argument.parser.Parser;
 import dev.rollczi.litecommands.input.raw.RawInputAnalyzer;
 import dev.rollczi.litecommands.invalidusage.InvalidUsage;
@@ -44,7 +45,7 @@ class RawParseableInput implements ParseableInput<RawParseableInput.RawInputMatc
         }
 
         @Override
-        public <SENDER, PARSED> ParseResult<PARSED> nextArgument(Invocation<SENDER> invocation, Argument<PARSED> argument, Supplier<Parser<SENDER, PARSED>> parserProvider) {
+        public <SENDER, PARSED> ParseResult<PARSED> nextArgument(Invocation<SENDER> invocation, Argument<PARSED> argument, Supplier<Parser<SENDER, PARSED>> parserProvider, ParseResultAccessor accessor) {
             RawInputAnalyzer.Context<SENDER, PARSED> context = rawInputAnalyzer.toContext(argument, parserProvider.get());
 
             if (context.isMissingFullArgument()) {

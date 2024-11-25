@@ -1,5 +1,7 @@
 package dev.rollczi.litecommands.requirement;
 
+import dev.rollczi.litecommands.argument.parser.ParseResultAccessor;
+import dev.rollczi.litecommands.argument.parser.ParseResultAccessorImpl;
 import dev.rollczi.litecommands.argument.parser.ParserRegistry;
 import dev.rollczi.litecommands.argument.parser.input.ParseableInputMatcher;
 import dev.rollczi.litecommands.bind.BindRegistry;
@@ -8,16 +10,19 @@ import dev.rollczi.litecommands.command.executor.CommandExecutorMatchResult;
 import dev.rollczi.litecommands.context.ContextRegistry;
 import dev.rollczi.litecommands.invocation.Invocation;
 import dev.rollczi.litecommands.meta.Meta;
+import dev.rollczi.litecommands.reflect.type.TypeRange;
 import dev.rollczi.litecommands.scheduler.Scheduler;
 import dev.rollczi.litecommands.shared.FailedReason;
 import dev.rollczi.litecommands.strict.StrictService;
 import dev.rollczi.litecommands.validator.ValidatorResult;
 import dev.rollczi.litecommands.validator.requirement.RequirementValidator;
+
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
+
 import static java.util.concurrent.CompletableFuture.completedFuture;
 
 public class RequirementMatchService<SENDER> {
@@ -39,10 +44,11 @@ public class RequirementMatchService<SENDER> {
     public <MATCHER extends ParseableInputMatcher<MATCHER>> CompletableFuture<CommandExecutorMatchResult> match(
         CommandExecutor<SENDER> executor,
         Invocation<SENDER> invocation,
-        MATCHER matcher
+        MATCHER matcher,
+        ParseResultAccessor accessor
     ) {
-        List<ScheduledRequirement<?>> scheduledRequirements = scheduledRequirementResolver.prepareRequirements(executor, invocation, matcher);
-        return match(invocation, executor, new ArrayList<>(), scheduledRequirements.listIterator(), matcher);
+        List<ScheduledRequirement<?>> scheduledRequirements = scheduledRequirementResolver.prepareRequirements(executor, invocation, matcher, accessor);
+        return match(invocation, executor, new ArrayList<>(), scheduledRequirements.listIterator(), matcher, new ParseResultAccessorImpl(), new ArrayList<>());
     }
 
     private CompletableFuture<CommandExecutorMatchResult> match(
@@ -50,9 +56,11 @@ public class RequirementMatchService<SENDER> {
         CommandExecutor<SENDER> executor,
         List<RequirementMatch> matches,
         Iterator<ScheduledRequirement<?>> requirementIterator,
-        ParseableInputMatcher<?> matcher
+        ParseableInputMatcher<?> matcher,
+        ParseResultAccessorImpl accessor,
+        List<ScheduledRequirement<?>> waitingRequirementList
     ) {
-        if (!requirementIterator.hasNext()) {
+        if (!requirementIterator.hasNext() && waitingRequirementList.isEmpty()) {
             ParseableInputMatcher.EndResult endResult = matcher.endMatch(strictService.isStrict(executor));
 
             if (!endResult.isSuccessful()) {
@@ -68,10 +76,31 @@ public class RequirementMatchService<SENDER> {
             return completedFuture(executor.match(resultBuilder.build()));
         }
 
-        ScheduledRequirement<?> scheduledRequirement = requirementIterator.next();
+        ScheduledRequirement<?> scheduledRequirement = null;
+        if (requirementIterator.hasNext()) {
+            scheduledRequirement = requirementIterator.next();
+        } else {
+            ScheduledRequirement<?> match = null;
+            int num = Integer.MAX_VALUE;
+            for (ScheduledRequirement<?> requirement : waitingRequirementList) {
+                int i = requirement.depends().containsAll(accessor);
+                if (i < num && i >= 0) {
+                    num = i;
+                    match = requirement;
+                    if (i == 0) {
+                        break;
+                    }
+                }
+            }
+            if (match != null) {
+                scheduledRequirement = match;
+                waitingRequirementList.remove(match);
+            }
+        }
 
+        ScheduledRequirement<?> finalScheduledRequirement = scheduledRequirement;
         return scheduledRequirement.runMatch().thenCompose(result -> result.asFuture()).thenCompose(requirementResult -> {
-            Requirement<?> requirement = scheduledRequirement.getRequirement();
+            Requirement<?> requirement = finalScheduledRequirement.getRequirement();
 
             if (requirementResult.isFailed()) {
                 return CompletableFuture.completedFuture(CommandExecutorMatchResult.failed(requirementResult.getFailedReason()));
@@ -79,10 +108,13 @@ public class RequirementMatchService<SENDER> {
 
             if (requirementResult.isSuccessfulNull()) {
                 matches.add(toMatch(requirement, null));
-                return match(invocation, executor, matches, requirementIterator, matcher);
+                accessor.add(TypeRange.same(requirement.getType().getRawType()), requirement.getName(), null);
+                return match(invocation, executor, matches, requirementIterator, matcher, accessor, waitingRequirementList);
             }
 
             Object success = requirementResult.getSuccess();
+
+            accessor.add(TypeRange.same(requirement.getType().getRawType()), requirement.getName(), success);
 
             List<RequirementValidator<?, ?>> validators = requirement.meta().get(Meta.REQUIREMENT_VALIDATORS);
 
@@ -95,7 +127,7 @@ public class RequirementMatchService<SENDER> {
             }
 
             matches.add(toMatch(requirement, success));
-            return match(invocation, executor, matches, requirementIterator, matcher).thenApply(executorMatchResult -> {
+            return match(invocation, executor, matches, requirementIterator, matcher, accessor, waitingRequirementList).thenApply(executorMatchResult -> {
                 for (RequirementCondition condition : requirementResult.getConditions()) {
                     Optional<FailedReason> failedReason = condition.check(invocation, executorMatchResult);
 

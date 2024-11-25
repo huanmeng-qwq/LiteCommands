@@ -1,6 +1,7 @@
 package dev.rollczi.litecommands.meta;
 
 import dev.rollczi.litecommands.argument.ArgumentKey;
+import dev.rollczi.litecommands.argument.parser.ParserDependResult;
 import dev.rollczi.litecommands.cooldown.CooldownContext;
 import dev.rollczi.litecommands.priority.PriorityLevel;
 import dev.rollczi.litecommands.scheduler.SchedulerPoll;
@@ -39,6 +40,9 @@ public interface Meta {
     @Deprecated
     @ApiStatus.ScheduledForRemoval(inVersion = "3.12.0")
     MetaKey<Parameter> REQUIREMENT_PARAMETER = MetaKey.of("requirement-parameter", Parameter.class);
+
+    @ApiStatus.Experimental
+    MetaKey<ParserDependResult> PARSER_DEPEND_RESULT_KEY = MetaKey.of("depend-result-parser", ParserDependResult.class);
 
     Meta EMPTY_META = new MetaEmptyImpl();
 

@@ -1,11 +1,9 @@
 package dev.rollczi.litecommands.requirement;
 
 import dev.rollczi.litecommands.argument.Argument;
-import dev.rollczi.litecommands.argument.ArgumentKey;
 import dev.rollczi.litecommands.argument.parser.ParseResult;
-import dev.rollczi.litecommands.argument.parser.Parser;
+import dev.rollczi.litecommands.argument.parser.ParseResultAccessor;
 import dev.rollczi.litecommands.argument.parser.ParserRegistry;
-import dev.rollczi.litecommands.argument.parser.ParserSet;
 import dev.rollczi.litecommands.argument.parser.input.ParseableInputMatcher;
 import dev.rollczi.litecommands.bind.BindRegistry;
 import dev.rollczi.litecommands.bind.BindRequirement;
@@ -16,12 +14,11 @@ import dev.rollczi.litecommands.context.ContextRequirement;
 import dev.rollczi.litecommands.invocation.Invocation;
 import dev.rollczi.litecommands.meta.Meta;
 import dev.rollczi.litecommands.scheduler.Scheduler;
-import dev.rollczi.litecommands.shared.BiHashMap;
-import dev.rollczi.litecommands.shared.BiMap;
 import dev.rollczi.litecommands.shared.ThrowingSupplier;
+import org.jetbrains.annotations.NotNull;
+
 import java.util.ArrayList;
 import java.util.List;
-import org.jetbrains.annotations.NotNull;
 
 class ScheduledRequirementResolver<SENDER> {
 
@@ -38,11 +35,11 @@ class ScheduledRequirementResolver<SENDER> {
     }
 
     @NotNull
-    <MATCHER extends ParseableInputMatcher<MATCHER>> List<ScheduledRequirement<?>> prepareRequirements(CommandExecutor<SENDER> executor, Invocation<SENDER> invocation, MATCHER matcher) {
+    <MATCHER extends ParseableInputMatcher<MATCHER>> List<ScheduledRequirement<?>> prepareRequirements(CommandExecutor<SENDER> executor, Invocation<SENDER> invocation, MATCHER matcher, ParseResultAccessor accessor) {
         List<ScheduledRequirement<?>> requirements = new ArrayList<>();
 
         for (Argument<?> argument : executor.getArguments()) {
-            requirements.add(toScheduled(argument, () -> matchArgument(argument, invocation, matcher)));
+            requirements.add(toScheduled(argument, () -> matchArgument(argument, invocation, matcher, accessor)));
         }
 
         for (ContextRequirement<?> contextRequirement : executor.getContextRequirements()) {
@@ -60,8 +57,8 @@ class ScheduledRequirementResolver<SENDER> {
         return new ScheduledRequirement<>(requirement, () -> scheduler.supply(requirement.meta().get(Meta.POLL_TYPE), resultSupplier));
     }
 
-    private <T, MATCHER extends ParseableInputMatcher<MATCHER>> RequirementFutureResult<T> matchArgument(Argument<T> argument, Invocation<SENDER> invocation, MATCHER matcher) {
-        return matcher.nextArgument(invocation, argument, () -> parserRegistry.getParser(argument));
+    private <T, MATCHER extends ParseableInputMatcher<MATCHER>> RequirementFutureResult<T> matchArgument(Argument<T> argument, Invocation<SENDER> invocation, MATCHER matcher, ParseResultAccessor accessor) {
+        return matcher.nextArgument(invocation, argument, () -> parserRegistry.getParser(argument), accessor);
     }
 
     private <T> RequirementFutureResult<T> matchContext(ContextRequirement<T> contextRequirement, Invocation<SENDER> invocation) {

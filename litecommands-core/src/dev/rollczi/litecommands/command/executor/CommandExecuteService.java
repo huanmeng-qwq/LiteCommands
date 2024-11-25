@@ -1,6 +1,8 @@
 package dev.rollczi.litecommands.command.executor;
 
 import dev.rollczi.litecommands.LiteCommandsException;
+import dev.rollczi.litecommands.argument.parser.ParseResultAccessor;
+import dev.rollczi.litecommands.argument.parser.ParseResultAccessorImpl;
 import dev.rollczi.litecommands.argument.parser.input.ParseableInputMatcher;
 import dev.rollczi.litecommands.command.CommandRoute;
 import dev.rollczi.litecommands.command.executor.event.CandidateExecutorFoundEvent;
@@ -8,21 +10,21 @@ import dev.rollczi.litecommands.command.executor.event.CandidateExecutorMatchEve
 import dev.rollczi.litecommands.command.executor.event.CommandPostExecutionEvent;
 import dev.rollczi.litecommands.command.executor.event.CommandPreExecutionEvent;
 import dev.rollczi.litecommands.command.executor.flow.ExecuteFlow;
-import dev.rollczi.litecommands.invalidusage.InvalidUsageException;
 import dev.rollczi.litecommands.event.EventPublisher;
-import dev.rollczi.litecommands.handler.result.ResultHandleService;
-import dev.rollczi.litecommands.requirement.RequirementMatchService;
-import dev.rollczi.litecommands.shared.FailedReason;
 import dev.rollczi.litecommands.flow.Flow;
+import dev.rollczi.litecommands.handler.result.ResultHandleService;
 import dev.rollczi.litecommands.invalidusage.InvalidUsage;
+import dev.rollczi.litecommands.invalidusage.InvalidUsageException;
 import dev.rollczi.litecommands.invocation.Invocation;
 import dev.rollczi.litecommands.meta.Meta;
+import dev.rollczi.litecommands.requirement.RequirementMatchService;
 import dev.rollczi.litecommands.scheduler.Scheduler;
 import dev.rollczi.litecommands.scheduler.SchedulerPoll;
+import dev.rollczi.litecommands.shared.FailedReason;
 import dev.rollczi.litecommands.validator.ValidatorService;
-import java.util.Iterator;
 import org.jetbrains.annotations.Nullable;
 
+import java.util.Iterator;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
 
@@ -50,11 +52,15 @@ public class CommandExecuteService<SENDER> {
         this.publisher = publisher;
     }
 
-    public CompletableFuture<CommandExecuteResult> execute(Invocation<SENDER> invocation, ParseableInputMatcher<?> matcher, CommandRoute<SENDER> commandRoute) {
-        return execute0(invocation, matcher, commandRoute)
+    public CompletableFuture<CommandExecuteResult> execute(Invocation<SENDER> invocation, ParseableInputMatcher<?> matcher, CommandRoute<SENDER> commandRoute, ParseResultAccessor accessor) {
+        return execute0(invocation, matcher, commandRoute, accessor)
             .thenApply(result -> publishAndApplyEvent(invocation, commandRoute, result))
             .thenCompose(executeResult -> scheduler.supply(SchedulerPoll.MAIN, () -> this.handleResult(invocation, executeResult)))
             .exceptionally(new LastExceptionHandler<>(resultResolver, invocation));
+    }
+
+    public CompletableFuture<CommandExecuteResult> execute(Invocation<SENDER> invocation, ParseableInputMatcher<?> matcher, CommandRoute<SENDER> commandRoute) {
+        return execute(invocation, matcher, commandRoute, new ParseResultAccessorImpl());
     }
 
     @SuppressWarnings("unchecked")
@@ -90,9 +96,10 @@ public class CommandExecuteService<SENDER> {
     private <MATCHER extends ParseableInputMatcher<MATCHER>> CompletableFuture<CommandExecuteResult> execute0(
         Invocation<SENDER> invocation,
         ParseableInputMatcher<MATCHER> matcher,
-        CommandRoute<SENDER> commandRoute
+        CommandRoute<SENDER> commandRoute,
+        ParseResultAccessor accessor
     ) {
-        return this.execute(commandRoute.getExecutors().iterator(), invocation, matcher, commandRoute, null);
+        return this.execute(commandRoute.getExecutors().iterator(), invocation, matcher, commandRoute, accessor, null);
     }
 
     private <MATCHER extends ParseableInputMatcher<MATCHER>> CompletableFuture<CommandExecuteResult> execute(
@@ -100,6 +107,7 @@ public class CommandExecuteService<SENDER> {
         Invocation<SENDER> invocation,
         ParseableInputMatcher<MATCHER> matcher,
         CommandRoute<SENDER> commandRoute,
+        ParseResultAccessor accessor,
         @Nullable FailedReason last
     ) {
         // Handle failed
@@ -130,12 +138,12 @@ public class CommandExecuteService<SENDER> {
             }
 
             if (foundEvent.getFlow() == ExecuteFlow.SKIP) {
-                return this.execute(executors, invocation, matcher, commandRoute, FailedReason.max(foundEvent.getFlowResult(), last));
+                return this.execute(executors, invocation, matcher, commandRoute, accessor, FailedReason.max(foundEvent.getFlowResult(), last));
             }
         }
 
         // Handle matching arguments
-        return this.requirementMatchService.match(executor, invocation, matcher.copy()).thenCompose(match -> {
+        return this.requirementMatchService.match(executor, invocation, matcher.copy(), accessor).thenCompose(match -> {
             if (publisher.hasSubscribers(CandidateExecutorMatchEvent.class)) {
                 CandidateExecutorMatchEvent<SENDER> matchEvent = publisher.publish(new CandidateExecutorMatchEvent<>(invocation, executor, match));
                 if (matchEvent.getFlow() == ExecuteFlow.STOP) {
@@ -143,7 +151,7 @@ public class CommandExecuteService<SENDER> {
                 }
 
                 if (matchEvent.getFlow() == ExecuteFlow.SKIP) {
-                    return this.execute(executors, invocation, matcher, commandRoute, FailedReason.max(matchEvent.getFlowResult(), last));
+                    return this.execute(executors, invocation, matcher, commandRoute, accessor, FailedReason.max(matchEvent.getFlowResult(), last));
                 }
             }
 
@@ -151,10 +159,10 @@ public class CommandExecuteService<SENDER> {
                 FailedReason current = match.getFailedReason();
 
                 if (current.hasResult()) {
-                    return this.execute(executors, invocation, matcher, commandRoute, FailedReason.max(current, last));
+                    return this.execute(executors, invocation, matcher, commandRoute, accessor, FailedReason.max(current, last));
                 }
 
-                return this.execute(executors, invocation, matcher, commandRoute, last);
+                return this.execute(executors, invocation, matcher, commandRoute, accessor, last);
             }
 
             if (publisher.hasSubscribers(CommandPreExecutionEvent.class)) {
@@ -164,7 +172,7 @@ public class CommandExecuteService<SENDER> {
                 }
 
                 if (executionEvent.getFlow() == ExecuteFlow.SKIP) {
-                    return this.execute(executors, invocation, matcher, commandRoute, FailedReason.max(executionEvent.getFlowResult(), last));
+                    return this.execute(executors, invocation, matcher, commandRoute, accessor, FailedReason.max(executionEvent.getFlowResult(), last));
                 }
             }
 
@@ -186,15 +194,13 @@ public class CommandExecuteService<SENDER> {
     private CommandExecuteResult execute(CommandExecutorMatchResult match, CommandExecutor<SENDER> executor) {
         try {
             return match.executeCommand();
-        }
-        catch (LiteCommandsException exception) {
+        } catch (LiteCommandsException exception) {
             if (exception.getCause() instanceof InvalidUsageException) { //TODO: Use invalid usage handler (when InvalidUsage.Cause is mapped to InvalidUsage)
                 return CommandExecuteResult.failed(executor, ((InvalidUsageException) exception.getCause()).getErrorResult());
             }
 
             return CommandExecuteResult.thrown(executor, exception);
-        }
-        catch (Throwable error) {
+        } catch (Throwable error) {
             return CommandExecuteResult.thrown(executor, error);
         }
     }

@@ -1,15 +1,17 @@
 package dev.rollczi.litecommands.argument.parser.input;
 
 import dev.rollczi.litecommands.argument.Argument;
+import dev.rollczi.litecommands.argument.parser.DependencyParserRedirect;
 import dev.rollczi.litecommands.argument.parser.ParseResult;
+import dev.rollczi.litecommands.argument.parser.ParseResultAccessor;
 import dev.rollczi.litecommands.argument.parser.Parser;
 import dev.rollczi.litecommands.input.raw.RawCommand;
 import dev.rollczi.litecommands.input.raw.RawInput;
 import dev.rollczi.litecommands.invalidusage.InvalidUsage;
 import dev.rollczi.litecommands.invocation.Invocation;
-
 import dev.rollczi.litecommands.priority.PriorityLevel;
 import dev.rollczi.litecommands.shared.FailedReason;
+
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.LinkedHashMap;
@@ -57,7 +59,7 @@ class NamedParseableInput implements ParseableInput<NamedParseableInput.NamedPar
         }
 
         @Override
-        public <SENDER, PARSED> ParseResult<PARSED> nextArgument(Invocation<SENDER> invocation, Argument<PARSED> argument, Supplier<Parser<SENDER, PARSED>> parserProvider) {
+        public <SENDER, PARSED> ParseResult<PARSED> nextArgument(Invocation<SENDER> invocation, Argument<PARSED> argument, Supplier<Parser<SENDER, PARSED>> parserProvider, ParseResultAccessor accessor) {
             String input = namedArguments.get(argument.getName());
 
             if (input == null) {
@@ -66,6 +68,9 @@ class NamedParseableInput implements ParseableInput<NamedParseableInput.NamedPar
 
             consumedArguments.add(argument.getName());
             Parser<SENDER, PARSED> parser = parserProvider.get();
+            if (parser instanceof DependencyParserRedirect) {
+                ((DependencyParserRedirect<?, ?, ?>) parser).setAccessor(accessor);
+            }
 
             return parser.parse(invocation, argument, RawInput.of(input.split(RawCommand.COMMAND_SEPARATOR)));
         }
