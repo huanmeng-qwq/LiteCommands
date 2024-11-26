@@ -9,6 +9,7 @@ plugins {
 
 dependencies {
     api("org.jetbrains:annotations:${Versions.JETBRAINS_ANNOTATIONS}")
+    api("org.ow2.asm:asm-tree:9.7.1")
 }
 
 litecommandsPublish {

@@ -1,7 +1,6 @@
 package dev.rollczi.litecommands.command.executor;
 
 import dev.rollczi.litecommands.LiteCommandsException;
-import dev.rollczi.litecommands.argument.parser.ParseResultAccessor;
 import dev.rollczi.litecommands.argument.parser.ParseResultAccessorImpl;
 import dev.rollczi.litecommands.argument.parser.input.ParseableInputMatcher;
 import dev.rollczi.litecommands.command.CommandRoute;
@@ -52,7 +51,7 @@ public class CommandExecuteService<SENDER> {
         this.publisher = publisher;
     }
 
-    public CompletableFuture<CommandExecuteResult> execute(Invocation<SENDER> invocation, ParseableInputMatcher<?> matcher, CommandRoute<SENDER> commandRoute, ParseResultAccessor accessor) {
+    public CompletableFuture<CommandExecuteResult> execute(Invocation<SENDER> invocation, ParseableInputMatcher<?> matcher, CommandRoute<SENDER> commandRoute, ParseResultAccessorImpl accessor) {
         return execute0(invocation, matcher, commandRoute, accessor)
             .thenApply(result -> publishAndApplyEvent(invocation, commandRoute, result))
             .thenCompose(executeResult -> scheduler.supply(SchedulerPoll.MAIN, () -> this.handleResult(invocation, executeResult)))
@@ -97,7 +96,7 @@ public class CommandExecuteService<SENDER> {
         Invocation<SENDER> invocation,
         ParseableInputMatcher<MATCHER> matcher,
         CommandRoute<SENDER> commandRoute,
-        ParseResultAccessor accessor
+        ParseResultAccessorImpl accessor
     ) {
         return this.execute(commandRoute.getExecutors().iterator(), invocation, matcher, commandRoute, accessor, null);
     }
@@ -107,7 +106,7 @@ public class CommandExecuteService<SENDER> {
         Invocation<SENDER> invocation,
         ParseableInputMatcher<MATCHER> matcher,
         CommandRoute<SENDER> commandRoute,
-        ParseResultAccessor accessor,
+        ParseResultAccessorImpl accessor,
         @Nullable FailedReason last
     ) {
         // Handle failed

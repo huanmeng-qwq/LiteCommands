@@ -1,8 +1,10 @@
 package dev.rollczi.litecommands.requirement;
 
 import dev.rollczi.litecommands.argument.Argument;
+import dev.rollczi.litecommands.argument.parser.DependencyParser;
 import dev.rollczi.litecommands.argument.parser.ParseResult;
 import dev.rollczi.litecommands.argument.parser.ParseResultAccessor;
+import dev.rollczi.litecommands.argument.parser.Parser;
 import dev.rollczi.litecommands.argument.parser.ParserRegistry;
 import dev.rollczi.litecommands.argument.parser.input.ParseableInputMatcher;
 import dev.rollczi.litecommands.bind.BindRegistry;
@@ -39,6 +41,10 @@ class ScheduledRequirementResolver<SENDER> {
         List<ScheduledRequirement<?>> requirements = new ArrayList<>();
 
         for (Argument<?> argument : executor.getArguments()) {
+            Parser<SENDER, ?> parser = parserRegistry.getParser(argument);
+            if (parser instanceof DependencyParser) {
+                argument.meta().put(Meta.PARSER_DEPEND_RESULT_KEY, ((DependencyParser) parser).depends());
+            }
             requirements.add(toScheduled(argument, () -> matchArgument(argument, invocation, matcher, accessor)));
         }
 

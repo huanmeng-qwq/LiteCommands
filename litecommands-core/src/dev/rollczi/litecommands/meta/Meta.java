@@ -42,7 +42,7 @@ public interface Meta {
     MetaKey<Parameter> REQUIREMENT_PARAMETER = MetaKey.of("requirement-parameter", Parameter.class);
 
     @ApiStatus.Experimental
-    MetaKey<ParserDependResult> PARSER_DEPEND_RESULT_KEY = MetaKey.of("depend-result-parser", ParserDependResult.class);
+    MetaKey<ParserDependResult> PARSER_DEPEND_RESULT_KEY = MetaKey.of("depend-result-parser", ParserDependResult.class, ParserDependResult.empty());
 
     Meta EMPTY_META = new MetaEmptyImpl();
 

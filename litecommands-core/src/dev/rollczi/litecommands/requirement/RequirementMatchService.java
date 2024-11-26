@@ -1,6 +1,6 @@
 package dev.rollczi.litecommands.requirement;
 
-import dev.rollczi.litecommands.argument.parser.ParseResultAccessor;
+import dev.rollczi.litecommands.LiteCommandsException;
 import dev.rollczi.litecommands.argument.parser.ParseResultAccessorImpl;
 import dev.rollczi.litecommands.argument.parser.ParserRegistry;
 import dev.rollczi.litecommands.argument.parser.input.ParseableInputMatcher;
@@ -22,6 +22,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
+import java.util.stream.Collectors;
 
 import static java.util.concurrent.CompletableFuture.completedFuture;
 
@@ -45,10 +46,10 @@ public class RequirementMatchService<SENDER> {
         CommandExecutor<SENDER> executor,
         Invocation<SENDER> invocation,
         MATCHER matcher,
-        ParseResultAccessor accessor
+        ParseResultAccessorImpl accessor
     ) {
         List<ScheduledRequirement<?>> scheduledRequirements = scheduledRequirementResolver.prepareRequirements(executor, invocation, matcher, accessor);
-        return match(invocation, executor, new ArrayList<>(), scheduledRequirements.listIterator(), matcher, new ParseResultAccessorImpl(), new ArrayList<>());
+        return match(invocation, executor, new ArrayList<>(), scheduledRequirements.listIterator(), matcher, accessor, new ArrayList<>());
     }
 
     private CompletableFuture<CommandExecutorMatchResult> match(
@@ -79,6 +80,10 @@ public class RequirementMatchService<SENDER> {
         ScheduledRequirement<?> scheduledRequirement = null;
         if (requirementIterator.hasNext()) {
             scheduledRequirement = requirementIterator.next();
+            if (scheduledRequirement.depends().containsAll(accessor) != 0) {
+                waitingRequirementList.add(scheduledRequirement);
+                return match(invocation, executor, matches, requirementIterator, matcher, accessor, waitingRequirementList);
+            }
         } else {
             ScheduledRequirement<?> match = null;
             int num = Integer.MAX_VALUE;
@@ -96,6 +101,10 @@ public class RequirementMatchService<SENDER> {
                 scheduledRequirement = match;
                 waitingRequirementList.remove(match);
             }
+        }
+
+        if (scheduledRequirement == null) {
+            return completedFuture(CommandExecutorMatchResult.failed(new LiteCommandsException("Unable to match the correct parameters: " + waitingRequirementList.stream().map(r -> r.getRequirement().getName()).collect(Collectors.joining(", ")))));
         }
 
         ScheduledRequirement<?> finalScheduledRequirement = scheduledRequirement;

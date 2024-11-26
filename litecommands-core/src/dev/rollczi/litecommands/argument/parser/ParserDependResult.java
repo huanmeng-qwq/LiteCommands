@@ -29,7 +29,7 @@ public class ParserDependResult {
 
 
     public static ParserDependResult of(DependencyParser.Builder builder) {
-        return new ParserDependResult(builder.depends(), Collections.emptyList());
+        return new ParserDependResult(builder.depends(), builder.optionalDepends());
     }
 
     public static ParserDependResult empty() {

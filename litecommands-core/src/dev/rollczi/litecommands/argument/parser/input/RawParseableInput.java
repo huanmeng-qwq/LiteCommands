@@ -1,15 +1,16 @@
 package dev.rollczi.litecommands.argument.parser.input;
 
 import dev.rollczi.litecommands.argument.Argument;
+import dev.rollczi.litecommands.argument.parser.DependencyParserRedirect;
 import dev.rollczi.litecommands.argument.parser.ParseResult;
 import dev.rollczi.litecommands.argument.parser.ParseResultAccessor;
 import dev.rollczi.litecommands.argument.parser.Parser;
 import dev.rollczi.litecommands.input.raw.RawInputAnalyzer;
 import dev.rollczi.litecommands.invalidusage.InvalidUsage;
 import dev.rollczi.litecommands.invocation.Invocation;
-
 import dev.rollczi.litecommands.priority.PriorityLevel;
 import dev.rollczi.litecommands.shared.FailedReason;
+
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -46,7 +47,11 @@ class RawParseableInput implements ParseableInput<RawParseableInput.RawInputMatc
 
         @Override
         public <SENDER, PARSED> ParseResult<PARSED> nextArgument(Invocation<SENDER> invocation, Argument<PARSED> argument, Supplier<Parser<SENDER, PARSED>> parserProvider, ParseResultAccessor accessor) {
-            RawInputAnalyzer.Context<SENDER, PARSED> context = rawInputAnalyzer.toContext(argument, parserProvider.get());
+            Parser<SENDER, PARSED> parser = parserProvider.get();
+            if (parser instanceof DependencyParserRedirect) {
+                ((DependencyParserRedirect<?, ?, ?>) parser).setAccessor(accessor);
+            }
+            RawInputAnalyzer.Context<SENDER, PARSED> context = rawInputAnalyzer.toContext(argument, parser);
 
             if (context.isMissingFullArgument()) {
                 Optional<ParseResult<PARSED>> optional = argument.getDefaultValue();

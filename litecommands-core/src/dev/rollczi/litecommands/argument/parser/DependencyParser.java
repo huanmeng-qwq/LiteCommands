@@ -3,6 +3,7 @@ package dev.rollczi.litecommands.argument.parser;
 import dev.rollczi.litecommands.reflect.type.TypeRange;
 import org.jetbrains.annotations.ApiStatus;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
@@ -28,6 +29,10 @@ public interface DependencyParser {
         public Builder(List<TypeRange<?>> depends, List<TypeRange<?>> optionalDepends) {
             this.depends = depends;
             this.optionalDepends = optionalDepends;
+        }
+
+        public static Builder create() {
+            return new Builder(new ArrayList<>(), new ArrayList<>());
         }
 
         public Builder depends(TypeRange<?>... depends) {
@@ -56,6 +61,10 @@ public interface DependencyParser {
 
         public List<TypeRange<?>> depends() {
             return Collections.unmodifiableList(this.depends);
+        }
+
+        public List<TypeRange<?>> optionalDepends() {
+            return Collections.unmodifiableList(optionalDepends);
         }
     }
 }
