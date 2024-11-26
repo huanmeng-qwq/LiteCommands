@@ -111,10 +111,7 @@ public class DependencyParserRedirect<SENDER, PARSED, T extends Parser<SENDER, P
             FieldVisitor fieldVisitor;
             MethodVisitor methodVisitor;
 
-//            String className = "dev/rollczi/litecommands/argument/parser/DependencyParserTest$Impl";
-//            String fileName = "DependencyParserTest.java";
             String descriptor = "L" + className + ";";
-//            String superClass = "dev/rollczi/litecommands/argument/parser/DependencyParserTest$SomeClassParser";
             String ParserDependResult = dev.rollczi.litecommands.argument.parser.ParserDependResult.class.getName().replace(".", "/");
             String ParseResultAccessor = dev.rollczi.litecommands.argument.parser.ParseResultAccessor.class.getName().replace(".", "/");
 
