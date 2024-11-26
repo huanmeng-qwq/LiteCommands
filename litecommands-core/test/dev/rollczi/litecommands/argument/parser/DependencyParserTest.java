@@ -62,21 +62,6 @@ public class DependencyParserTest extends LiteTestSpec {
         }
     }
 
-    static class Impl extends SomeClassParser {
-        public ParseResultAccessor accessor;
-        public ParserDependResult depends;
-
-        @Override
-        public ParseResultAccessor accessor() {
-            return accessor;
-        }
-
-        @Override
-        public ParserDependResult depends() {
-            return depends;
-        }
-    }
-
     static class Command extends LiteCommand<TestSender> {
         public Command() {
             super("test");
