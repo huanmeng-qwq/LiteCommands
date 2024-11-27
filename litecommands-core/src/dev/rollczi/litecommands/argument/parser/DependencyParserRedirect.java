@@ -20,6 +20,7 @@ import java.util.Map;
 
 public class DependencyParserRedirect<SENDER, PARSED, T extends Parser<SENDER, PARSED> & DependencyParser> implements Parser<SENDER, PARSED>, DependencyParser {
     private static final ByteClassLoader CLASS_LOADER = new ByteClassLoader(new URL[0], DependencyParserRedirect.class.getClassLoader());
+    private static final Map<String, Class<?>> CACHE_CLASS = new HashMap<>();
     private final T parser;
 
     private ParseResultAccessor accessor;
@@ -39,16 +40,25 @@ public class DependencyParserRedirect<SENDER, PARSED, T extends Parser<SENDER, P
         String superName = name.replace(".", "/");
         String classFileName = superName + "$Impl";
         String className = name + "$Impl";
-        byte[] bytes = AsmGenerator.make(classFileName, clazz.getSimpleName(), superName);
-        CLASS_LOADER.extraClassDefs.put(className, bytes);
+        Class<?> loadClass;
+        if (CACHE_CLASS.containsKey(className)) {
+            loadClass = CACHE_CLASS.get(className);
+        } else {
+            byte[] bytes = AsmGenerator.make(classFileName, clazz.getSimpleName(), superName);
+            CLASS_LOADER.extraClassDefs.put(className, bytes);
+            try {
+                loadClass = CLASS_LOADER.loadClass(className);
+            } catch (ClassNotFoundException e) {
+                throw new RuntimeException(e);
+            }
+        }
         try {
-            Class<?> loadClass = CLASS_LOADER.loadClass(className);
             fieldAccessor = loadClass.getDeclaredField("accessor");
             fieldDepends = loadClass.getDeclaredField("depends");
             Constructor<?> constructor = loadClass.getConstructor();
             constructor.setAccessible(true);
             return (T) constructor.newInstance();
-        } catch (ClassNotFoundException | InstantiationException | IllegalAccessException | InvocationTargetException |
+        } catch (InstantiationException | IllegalAccessException | InvocationTargetException |
                  NoSuchMethodException | NoSuchFieldException e) {
             throw new RuntimeException(e);
         }
