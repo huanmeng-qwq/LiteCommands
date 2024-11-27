@@ -48,6 +48,7 @@ public class DependencyParserRedirect<SENDER, PARSED, T extends Parser<SENDER, P
             CLASS_LOADER.extraClassDefs.put(className, bytes);
             try {
                 loadClass = CLASS_LOADER.loadClass(className);
+                CACHE_CLASS.put(className, loadClass);
             } catch (ClassNotFoundException e) {
                 throw new RuntimeException(e);
             }
