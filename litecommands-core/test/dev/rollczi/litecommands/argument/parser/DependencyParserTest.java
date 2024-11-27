@@ -6,12 +6,10 @@ import dev.rollczi.litecommands.argument.resolver.ArgumentResolver;
 import dev.rollczi.litecommands.invocation.Invocation;
 import dev.rollczi.litecommands.programmatic.LiteCommand;
 import dev.rollczi.litecommands.unit.TestSender;
-import dev.rollczi.litecommands.unit.annotations.LiteTest;
 import dev.rollczi.litecommands.unit.annotations.LiteTestSpec;
 import org.jetbrains.annotations.Nullable;
 import org.junit.jupiter.api.Test;
 
-@LiteTest
 public class DependencyParserTest extends LiteTestSpec {
     static LiteTestConfig config = builder -> builder
         .argument(User.class, new UserParser())
